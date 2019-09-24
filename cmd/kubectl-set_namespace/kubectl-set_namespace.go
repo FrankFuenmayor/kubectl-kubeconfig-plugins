@@ -18,8 +18,8 @@ Usage:
 
 `
 
-type KConfig = map[string]interface{}
-type KContext = map[interface{}]interface{}
+type KConfig map[string]interface{}
+type KContext map[interface{}]interface{}
 
 func main() {
 
@@ -37,7 +37,7 @@ func main() {
 		panic(err)
 	}
 
-	kubeConfigPath := path.Join(uhd, ".kube", "kubeconfig")
+	kubeConfigPath := path.Join(uhd, ".kube", "config")
 
 	config, err := ioutil.ReadFile(kubeConfigPath)
 
