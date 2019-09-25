@@ -1,100 +1,81 @@
 package main
 
 import (
-	"bufio"
-	"errors"
 	"flag"
 	"fmt"
-	"gopkg.in/yaml.v2"
-	"io/ioutil"
+	"github.com/frankfuenmayor/kubectl-project-plugin/pkg/kubeconfig"
+	yamlutils "github.com/frankfuenmayor/kubectl-project-plugin/pkg/utils/yaml"
 	"os"
 	"path"
 )
 
 const missingArgErrorMessage = `Missing namespace
-
 Usage: 
 	kubectl set-namespace <namespace>
 
 `
 
-type KConfig map[string]interface{}
-type KContext map[interface{}]interface{}
-
 func main() {
 
+	validateArgs()
+
+	selectedNamespace := flag.Arg(0)
+
+	kubeConfigPath, err := resolveKubeConfigPath()
+
+	if err != nil {
+		panic(err)
+	}
+
+	kubeConfig, err := newKubeConfig(kubeConfigPath)
+
+	if err != nil {
+		panic(err)
+	}
+
+	if err := kubeConfig.UpdateCurrentContextNamespace(selectedNamespace); err != nil {
+		panic(err)
+	}
+
+	if err := yamlutils.Write(kubeConfigPath, kubeConfig); err != nil {
+		panic(err)
+	}
+
+	fmt.Printf("File %v updated\n", kubeConfigPath)
+	fmt.Printf("%v namespace is now %v\n", kubeConfig.CurrentContextName(), selectedNamespace)
+}
+
+func validateArgs() {
 	flag.Parse()
 	if flag.NArg() == 0 {
 		fmt.Print(missingArgErrorMessage)
 		os.Exit(1)
 	}
+}
 
-	selectedNamespace := flag.Arg(0)
+func resolveKubeConfigPath() (string, error) {
+
+	if path := os.Getenv("KUBECONFIG"); path != "" {
+		return path, nil
+	}
 
 	uhd, err := os.UserHomeDir()
 
 	if err != nil {
-		panic(err)
+		return "", err
 	}
 
-	kubeConfigPath := path.Join(uhd, ".kube", "config")
+	return path.Join(uhd, ".kube", "config"), nil
 
-	config, err := ioutil.ReadFile(kubeConfigPath)
-
-	if err != nil {
-		panic(err)
-	}
-
-	var out KConfig
-
-	err = yaml.Unmarshal(config, &out)
-
-	if err != nil {
-		panic(err)
-	}
-
-	currentContext := out["current-context"]
-
-	fmt.Printf(`Context "%v" default namespace is now "%v"\n`, currentContext, selectedNamespace)
-
-	ctxs, ok := out["contexts"].([]interface{})
-
-	if !ok {
-		panic(errors.New("unexpected"))
-	}
-
-	var selectedContext KContext
-
-	for _, ctx := range ctxs {
-
-		ctxMap := ctx.(KContext)
-
-		if currentContext == NameOf(ctxMap) {
-			selectedContext = ctxMap["context"].(KContext)
-		}
-	}
-
-	if selectedContext == nil {
-		panic(errors.New(fmt.Sprintf("context %v not found", currentContext)))
-	}
-
-	selectedContext["namespace"] = selectedNamespace
-
-	file, err := os.OpenFile(kubeConfigPath, os.O_WRONLY, 0644)
-
-	if err != nil {
-		panic(err)
-	}
-
-	writer := bufio.NewWriter(file)
-
-	err = yaml.NewEncoder(writer).Encode(out)
-
-	if err != nil {
-		panic(err)
-	}
 }
 
-func NameOf(contexts KContext) string {
-	return contexts["name"].(string)
+func newKubeConfig(configPath string) (kubeconfig.KubeConfig, error) {
+
+	var out kubeconfig.KubeConfig
+
+	if err := yamlutils.Read(configPath, &out); err != nil {
+		return nil, err
+	}
+
+	return out, nil
 }
