@@ -16,7 +16,7 @@ file`kubectl-kubeconfig-plugins_darwin_amd64.tar` extract it and move them to a 
 # Available plugins
 
 
-###set-namespace
+### set-namespace
 
 ```bash
 kubectl set-namespace myapp
