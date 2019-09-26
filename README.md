@@ -25,7 +25,7 @@ kubectl set-namespace myapp
 Changes the current context's default namespace to `myapp`
 
 
-###aws-update-kubeconfig
+### aws-update-kubeconfig
 
 ```bash
 kubectl aws-update-kubeconfig
