@@ -2,16 +2,16 @@ package main
 
 import (
 	"flag"
-	"fmt"
-	"github.com/frankfuenmayor/kubectl-project-plugin/pkg/kubeconfig"
-	yamlutils "github.com/frankfuenmayor/kubectl-project-plugin/pkg/utils/yaml"
+	"github.com/FrankFuenmayor/kubectl-kubeconfig-plugins/pkg/kubeconfig"
+	"github.com/FrankFuenmayor/kubectl-kubeconfig-plugins/pkg/utils/yamlutils"
+	"github.com/gookit/color"
 	"os"
 	"path"
 )
 
 const missingArgErrorMessage = `Missing namespace
 Usage: 
-	kubectl set-namespace <namespace>
+	kubectl set-namespace [namespace]
 
 `
 
@@ -41,14 +41,14 @@ func main() {
 		panic(err)
 	}
 
-	fmt.Printf("File %v updated\n", kubeConfigPath)
-	fmt.Printf("%v namespace is now %v\n", kubeConfig.CurrentContextName(), selectedNamespace)
+	color.Bold.Printf("📃 %v updated\n", kubeConfigPath)
+	color.Bold.Printf("✅ %v namespace: %v\n", kubeConfig.CurrentContextName(), selectedNamespace)
 }
 
 func validateArgs() {
 	flag.Parse()
 	if flag.NArg() == 0 {
-		fmt.Print(missingArgErrorMessage)
+		color.Bold.Print(missingArgErrorMessage)
 		os.Exit(1)
 	}
 }
