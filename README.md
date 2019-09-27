@@ -2,6 +2,10 @@
 
 This plugin will allow you to change the default namespace in the current context in the kubeconfig file.
 
+### Requirements
+
+kubectl v1.12.0 or later
+
 ### Installing on macOS
 
 ```
