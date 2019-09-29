@@ -1,81 +1,58 @@
 package main
 
 import (
-	"flag"
-	"github.com/FrankFuenmayor/kubectl-kubeconfig-plugins/pkg/kubeconfig"
-	"github.com/FrankFuenmayor/kubectl-kubeconfig-plugins/pkg/utils/yamlutils"
 	"github.com/gookit/color"
+	"github.com/pkg/errors"
+	"github.com/spf13/cobra"
+	"k8s.io/cli-runtime/pkg/genericclioptions"
+	"k8s.io/client-go/tools/clientcmd"
 	"os"
-	"path"
 )
 
-const missingArgErrorMessage = `Missing namespace
-Usage: 
-	kubectl set-namespace [namespace]
+const usage = `Usage: 
 
-`
+	kubectl set-namespace [namespace]`
+
+var MissingNamespaceArgument = errors.New("Missing namespace argument")
+var TooManyArguments = errors.New("Too many arguments")
 
 func main() {
 
-	validateArgs()
+	configFlags := genericclioptions.NewConfigFlags(true)
 
-	selectedNamespace := flag.Arg(0)
+	cmd := &cobra.Command{
+		Use: "set-namespace",
+		RunE: func(cmd *cobra.Command, args []string) error {
 
-	kubeConfigPath, err := resolveKubeConfigPath()
+			if len(args) == 0 {
+				return MissingNamespaceArgument
+			}
+			if len(args) > 1 {
+				return TooManyArguments
+			}
 
-	if err != nil {
-		panic(err)
+			config, err := configFlags.ToRawKubeConfigLoader().RawConfig()
+
+			if err != nil {
+				return err
+			}
+
+			currentContext := config.Contexts[config.CurrentContext]
+			currentContext.Namespace = args[0]
+			configPath := clientcmd.NewDefaultPathOptions()
+
+			if err = clientcmd.ModifyConfig(configPath, config, true); err != nil {
+				return err
+			}
+
+			color.Bold.Printf("✅  Context %v updated\n", config.CurrentContext)
+			return nil
+		},
 	}
 
-	kubeConfig, err := newKubeConfig(kubeConfigPath)
-
-	if err != nil {
-		panic(err)
-	}
-
-	if err := kubeConfig.UpdateCurrentContextNamespace(selectedNamespace); err != nil {
-		panic(err)
-	}
-
-	if err := yamlutils.Write(kubeConfigPath, kubeConfig); err != nil {
-		panic(err)
-	}
-
-	color.Bold.Printf("📃 %v updated\n", kubeConfigPath)
-	color.Bold.Printf("✅ %v namespace: %v\n", kubeConfig.CurrentContextName(), selectedNamespace)
-}
-
-func validateArgs() {
-	flag.Parse()
-	if flag.NArg() == 0 {
-		color.Bold.Print(missingArgErrorMessage)
+	configFlags.AddFlags(cmd.Flags())
+	cmd.SetUsageTemplate(usage)
+	if err := cmd.Execute(); err != nil {
 		os.Exit(1)
 	}
-}
-
-func resolveKubeConfigPath() (string, error) {
-
-	if path := os.Getenv("KUBECONFIG"); path != "" {
-		return path, nil
-	}
-
-	uhd, err := os.UserHomeDir()
-
-	if err != nil {
-		return "", err
-	}
-
-	return path.Join(uhd, ".kube", "config"), nil
-
-}
-
-func newKubeConfig(configPath string) (kubeconfig.KubeConfig, error) {
-
-	var out kubeconfig.KubeConfig
-
-	if err := yamlutils.Read(configPath, &out); err != nil {
-		return nil, err
-	}
-
-	return out, nil
 }

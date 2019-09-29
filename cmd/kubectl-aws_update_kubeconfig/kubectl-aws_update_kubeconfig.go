@@ -34,7 +34,8 @@ func main() {
 
 	stopClock := make(chan struct{}, 1)
 
-	go startClock(" Updating kubeconfig file...", stopClock)
+	updatingMsg := " Updating kubeconfig file..."
+	go startClock(updatingMsg, stopClock)
 
 	err = eks.UpdateKubeconfig(clusters)
 
@@ -43,6 +44,7 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+
 	println("✅ success.")
 }
 
